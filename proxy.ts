@@ -1,20 +1,23 @@
-import { auth } from "@/lib/auth/config";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export default auth((req) => {
-  const isLoggedIn = !!req.auth;
+export function proxy(request: NextRequest) {
+  const sessionToken =
+    request.cookies.get("authjs.session-token") ||
+    request.cookies.get("__Secure-authjs.session-token");
+
   const isDashboardRoute =
-    req.nextUrl.pathname.startsWith("/dashboard") ||
-    req.nextUrl.pathname.startsWith("/monitors") ||
-    req.nextUrl.pathname.startsWith("/incidents") ||
-    req.nextUrl.pathname.startsWith("/settings");
+    request.nextUrl.pathname.startsWith("/dashboard") ||
+    request.nextUrl.pathname.startsWith("/monitors") ||
+    request.nextUrl.pathname.startsWith("/incidents") ||
+    request.nextUrl.pathname.startsWith("/settings");
 
-  if (isDashboardRoute && !isLoggedIn) {
-    return NextResponse.redirect(new URL("/login", req.url));
+  if (isDashboardRoute && !sessionToken) {
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   return NextResponse.next();
-});
+}
 
 export const config = {
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
