@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  email        String        @unique
+  username     String        @unique
+  passwordHash String
+  createdAt    DateTime      @default(now())
+  monitors     Monitor[]
+  alertConfigs AlertConfig[]
+}
+
+model Monitor {
+  id                    Int            @id @default(autoincrement())
+  userId                Int
+  name                  String
+  url                   String
+  intervalMinutes       Int            @default(5)
+  method                String         @default("GET")
+  headers               Json           @default("{}")
+  responseTimeThreshold Int            @default(2000)
+  tags                  String[]       @default([])
+  isActive              Boolean        @default(true)
+  createdAt             DateTime       @default(now())
+  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checkHistory          CheckHistory[]
+  incidents             Incident[]
+  alertConfigs          AlertConfig[]
+}
+
+model CheckHistory {
+  id             Int      @id @default(autoincrement())
+  monitorId      Int
+  status         String
+  responseTimeMs Int?
+  statusCode     Int?
+  errorMessage   String?
+  checkedAt      DateTime @default(now())
+  monitor        Monitor  @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+}
+
+model Incident {
+  id         Int       @id @default(autoincrement())
+  monitorId  Int
+  startedAt  DateTime  @default(now())
+  resolvedAt DateTime?
+  isResolved Boolean   @default(false)
+  monitor    Monitor   @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+}
+
+model AlertConfig {
+  id        Int     @id @default(autoincrement())
+  userId    Int
+  monitorId Int
+  channel   String  @default("email")
+  destination String
+  isActive  Boolean @default(true)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monitor   Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+}
