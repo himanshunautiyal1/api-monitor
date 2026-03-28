@@ -4,7 +4,7 @@ module.exports = {
       name: "api-monitor",
       script: "node_modules/.bin/next",
       args: "start",
-      cwd: "/root/apps/api-monitor",
+      cwd: "/data/data/com.termux/files/home/apps/api-monitor",
       env: {
         NODE_ENV: "production",
         PORT: 3004,
