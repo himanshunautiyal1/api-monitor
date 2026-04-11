@@ -15,7 +15,7 @@ const updateSchema = z.object({
     .string()
     .refine((v) => ["GET", "POST", "HEAD"].includes(v))
     .optional(),
-  headers: z.record(z.string()).optional(),
+  headers: z.record(z.string(), z.string()).optional(),
   responseTimeThreshold: z.number().int().min(100).optional(),
   tags: z.array(z.string()).optional(),
   isActive: z.boolean().optional(),
