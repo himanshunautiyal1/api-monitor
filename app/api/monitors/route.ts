@@ -11,7 +11,7 @@ const monitorSchema = z.object({
     .int()
     .refine((v) => [1, 5, 15].includes(v)),
   method: z.string().refine((v) => ["GET", "POST", "HEAD"].includes(v)),
-  headers: z.record(z.string()).default({}),
+  headers: z.record(z.string(), z.string()).default({}),
   responseTimeThreshold: z.number().int().min(100).default(2000),
   tags: z.array(z.string()).default([]),
 });
