@@ -67,7 +67,7 @@ export async function PATCH(
 
   if (!parsed.success) {
     return NextResponse.json(
-      { error: parsed.error.errors[0].message },
+      { error: parsed.error.flatten().fieldErrors },
       { status: 400 },
     );
   }
