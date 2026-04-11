@@ -8,9 +8,8 @@ PM2_NAME="api-monitor"
 echo "🚀 Starting api-monitor deployment..."
 
 echo "📡 Fetching latest release info..."
-RELEASE_DATA=$(curl -s "https://api.github.com/repos/$GITHUB_USER/$GITHUB_REPO/releases/latest")
-
-TAG_NAME=$(echo "$RELEASE_DATA" | grep '"tag_name"' | cut -d '"' -f 4)
+TAG_NAME="latest"
+RELEASE_DATA=$(curl -s "https://api.github.com/repos/$GITHUB_USER/$GITHUB_REPO/releases/tags/latest")
 echo "✅ Latest release: $TAG_NAME"
 
 ASSET_URL=$(echo "$RELEASE_DATA" | grep "browser_download_url" | grep -E "\.tar\.gz|\.zip" | head -1 | cut -d '"' -f 4)
