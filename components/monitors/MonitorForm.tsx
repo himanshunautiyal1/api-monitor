@@ -21,9 +21,9 @@ const defaultData = {
   url: "",
   intervalMinutes: 5,
   method: "GET",
-  headers: {},
+  headers: {} as Record<string, string>,
   responseTimeThreshold: 2000,
-  tags: [],
+  tags: [] as string[],
 };
 
 export default function MonitorForm({ initialData }: MonitorFormProps) {
