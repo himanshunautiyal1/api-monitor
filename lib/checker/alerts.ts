@@ -149,30 +149,34 @@ export async function sendWeeklySummary() {
       }),
     );
 
-    const destination = user.alertConfigs[0].destination;
+    const destinations = [
+      ...new Set(user.alertConfigs.map((config) => config.destination)),
+    ];
 
-    await transporter.sendMail({
-      from: `"API Monitor" <${process.env.EMAIL_USER}>`,
-      to: destination,
-      subject: `📊 Weekly Monitor Summary`,
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>Weekly Summary</h2>
-          <table style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb;">
-            <thead>
-              <tr style="background: #f9fafb;">
-                <th style="padding: 8px; text-align: left;">Monitor</th>
-                <th style="padding: 8px; text-align: left;">Uptime</th>
-                <th style="padding: 8px; text-align: left;">Incidents</th>
-                <th style="padding: 8px; text-align: left;">Total Checks</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${summaryRows.join("")}
-            </tbody>
-          </table>
-        </div>
-      `,
-    });
+    for (const destination of destinations) {
+      await transporter.sendMail({
+        from: `"API Monitor" <${process.env.EMAIL_USER}>`,
+        to: destination,
+        subject: `📊 Weekly Monitor Summary`,
+        html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>Weekly Summary</h2>
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb;">
+          <thead>
+            <tr style="background: #f9fafb;">
+              <th style="padding: 8px; text-align: left;">Monitor</th>
+              <th style="padding: 8px; text-align: left;">Uptime</th>
+              <th style="padding: 8px; text-align: left;">Incidents</th>
+              <th style="padding: 8px; text-align: left;">Total Checks</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${summaryRows.join("")}
+          </tbody>
+        </table>
+      </div>
+    `,
+      });
+    }
   }
 }

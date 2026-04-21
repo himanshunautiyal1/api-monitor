@@ -17,7 +17,6 @@ async function getDashboardData(userId: number) {
 
   const monitorIds = monitors.map((m) => m.id);
 
-  // get latest check for each monitor
   const latestChecks = await Promise.all(
     monitors.map((monitor) =>
       prisma.checkHistory.findFirst({
@@ -27,7 +26,6 @@ async function getDashboardData(userId: number) {
     ),
   );
 
-  // get uptime % for each monitor (last 24h)
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const uptimeData = await Promise.all(
     monitors.map(async (monitor) => {
@@ -45,14 +43,12 @@ async function getDashboardData(userId: number) {
     }),
   );
 
-  // get active incidents
   const activeIncidents = await prisma.incident.findMany({
     where: { monitorId: { in: monitorIds }, isResolved: false },
     include: { monitor: true },
     orderBy: { startedAt: "desc" },
   });
 
-  // get recent resolved incidents
   const recentIncidents = await prisma.incident.findMany({
     where: { monitorId: { in: monitorIds }, isResolved: true },
     include: { monitor: true },
@@ -60,19 +56,14 @@ async function getDashboardData(userId: number) {
     take: 5,
   });
 
-  // calculate overall stats
   const totalMonitors = monitors.length;
-  const upMonitors = latestChecks.filter((c) => c?.status === "up").length;
-  const downMonitors = latestChecks.filter((c) => c?.status === "down").length;
-  const noDataMonitors = latestChecks.filter((c) => !c).length;
-
-  const validUptimes = uptimeData.filter((u) => u !== null).map(Number);
-  const avgUptime =
-    validUptimes.length > 0
-      ? (validUptimes.reduce((a, b) => a + b, 0) / validUptimes.length).toFixed(
-          1,
-        )
-      : null;
+  const upMonitors = monitors.filter(
+    (m, i) => m.isActive && latestChecks[i]?.status === "up",
+  ).length;
+  const downMonitors = monitors.filter(
+    (m, i) => m.isActive && latestChecks[i]?.status === "down",
+  ).length;
+  const pausedMonitors = monitors.filter((m) => !m.isActive).length;
 
   return {
     monitors,
@@ -84,8 +75,7 @@ async function getDashboardData(userId: number) {
       totalMonitors,
       upMonitors,
       downMonitors,
-      noDataMonitors,
-      avgUptime,
+      pausedMonitors,
     },
   };
 }
@@ -130,7 +120,7 @@ export default async function DashboardPage() {
           <h1 className="text-2xl font-bold text-white mb-1">
             Welcome, {session?.user?.name}
           </h1>
-          <p className="text-gray-400">Here&apos;s your monitoring overview</p>
+          <p className="text-gray-400">Here's your monitoring overview</p>
         </div>
         <AutoRefresh />
       </div>
@@ -154,9 +144,9 @@ export default async function DashboardPage() {
           </p>
         </div>
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <p className="text-gray-400 text-sm mb-1">Avg Uptime (24h)</p>
-          <p className="text-3xl font-bold text-blue-400">
-            {stats.avgUptime ? `${stats.avgUptime}%` : "N/A"}
+          <p className="text-gray-400 text-sm mb-1">Paused</p>
+          <p className="text-3xl font-bold text-yellow-400">
+            {stats.pausedMonitors}
           </p>
         </div>
       </div>
@@ -178,9 +168,12 @@ export default async function DashboardPage() {
                   className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-center justify-between"
                 >
                   <div>
-                    <p className="text-white font-medium">
+                    <Link
+                      href={`/monitors/${incident.monitor.id}`}
+                      className="text-white font-medium hover:text-blue-400 transition-colors"
+                    >
                       {incident.monitor.name}
-                    </p>
+                    </Link>
                     <p className="text-red-400 text-sm">
                       Down for {downtimeMinutes} minutes
                     </p>
@@ -234,7 +227,12 @@ export default async function DashboardPage() {
                     }`}
                   />
                   <div>
-                    <p className="text-white font-medium">{monitor.name}</p>
+                    <Link
+                      href={`/monitors/${monitor.id}`}
+                      className="text-white font-medium hover:text-blue-400 transition-colors"
+                    >
+                      {monitor.name}
+                    </Link>
                     <p className="text-gray-500 text-xs truncate max-w-xs">
                       {monitor.url}
                     </p>
@@ -253,25 +251,33 @@ export default async function DashboardPage() {
                     <p className="text-gray-400 text-xs">Uptime 24h</p>
                     <p className="text-white">{uptime ? `${uptime}%` : "—"}</p>
                   </div>
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full font-medium ${
-                      isPaused
-                        ? "bg-yellow-500/20 text-yellow-400"
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full font-medium ${
+                        isPaused
+                          ? "bg-yellow-500/20 text-yellow-400"
+                          : isUp
+                            ? "bg-green-500/20 text-green-400"
+                            : isDown
+                              ? "bg-red-500/20 text-red-400"
+                              : "bg-gray-700 text-gray-400"
+                      }`}
+                    >
+                      {isPaused
+                        ? "PAUSED"
                         : isUp
-                          ? "bg-green-500/20 text-green-400"
+                          ? "UP"
                           : isDown
-                            ? "bg-red-500/20 text-red-400"
-                            : "bg-gray-700 text-gray-400"
-                    }`}
-                  >
-                    {isPaused
-                      ? "PAUSED"
-                      : isUp
-                        ? "UP"
-                        : isDown
-                          ? "DOWN"
-                          : "No data"}
-                  </span>
+                            ? "DOWN"
+                            : "No data"}
+                    </span>
+                    <Link
+                      href={`/monitors/${monitor.id}`}
+                      className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                    >
+                      Details →
+                    </Link>
+                  </div>
                 </div>
               </div>
             );
@@ -300,9 +306,12 @@ export default async function DashboardPage() {
                   className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center justify-between"
                 >
                   <div>
-                    <p className="text-white font-medium">
+                    <Link
+                      href={`/monitors/${incident.monitor.id}`}
+                      className="text-white font-medium hover:text-blue-400 transition-colors"
+                    >
                       {incident.monitor.name}
-                    </p>
+                    </Link>
                     <p className="text-gray-400 text-sm">
                       {new Date(incident.startedAt).toLocaleDateString()} —{" "}
                       {downtimeMinutes !== null
