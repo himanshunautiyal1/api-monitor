@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
   const userMonitors = await prisma.monitor.findMany({
     where: {
       id: { in: monitorIds },
-      userId: Number(session.user.id),
+      userId: Number(session.user?.id),
     },
     select: { id: true },
   });
