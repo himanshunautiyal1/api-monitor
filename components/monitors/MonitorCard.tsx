@@ -35,13 +35,18 @@ export default function MonitorCard({ monitor }: { monitor: Monitor }) {
     });
     router.refresh();
   }
-
+  console.log("MonitorCard rendered", monitor.id);
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+    <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-gray-600 transition-colors">
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-1">
-            <h3 className="text-white font-semibold text-lg">{monitor.name}</h3>
+            <Link
+              href={`/monitors/${monitor.id}`}
+              className="text-white font-semibold text-lg hover:text-blue-400 transition-colors"
+            >
+              {monitor.name}
+            </Link>
             <span
               className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                 monitor.isActive
@@ -70,7 +75,7 @@ export default function MonitorCard({ monitor }: { monitor: Monitor }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 ml-4">
+        <div className="flex flex-wrap items-center gap-2 ml-4">
           <button
             onClick={handleToggle}
             className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg transition-colors"
@@ -82,6 +87,12 @@ export default function MonitorCard({ monitor }: { monitor: Monitor }) {
             className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg transition-colors"
           >
             Edit
+          </Link>
+          <Link
+            href={`/monitors/${monitor.id}`}
+            className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            Details
           </Link>
           <button
             onClick={handleDelete}
