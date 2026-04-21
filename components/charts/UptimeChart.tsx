@@ -57,7 +57,11 @@ export default function UptimeChart({ data }: Props) {
             borderRadius: "8px",
             color: "#fff",
           }}
-          formatter={(value: number) => [`${value}%`, "Uptime"]}
+          formatter={(value) => {
+            const raw = Array.isArray(value) ? value[0] : value;
+            const num = typeof raw === "number" ? raw : Number(raw);
+            return [`${Number.isFinite(num) ? num : "-"}%`, "Uptime"];
+          }}
         />
         <Bar dataKey="uptime" radius={[4, 4, 0, 0]}>
           {chartData.map((entry, index) => (

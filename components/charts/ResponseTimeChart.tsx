@@ -61,7 +61,11 @@ export default function ResponseTimeChart({ data }: Props) {
             borderRadius: "8px",
             color: "#fff",
           }}
-          formatter={(value: number) => [`${value}ms`, "Response Time"]}
+          formatter={(value) => {
+            const raw = Array.isArray(value) ? value[0] : value;
+            const num = typeof raw === "number" ? raw : Number(raw);
+            return [`${Number.isFinite(num) ? num : "-"}ms`, "Response Time"];
+          }}
         />
         <Line
           type="monotone"
