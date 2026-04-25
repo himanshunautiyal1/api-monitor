@@ -23,7 +23,7 @@ export default async function EditMonitorPage({
   return (
     <div>
       <h1 className="text-2xl font-bold text-white mb-2">Edit Monitor</h1>
-      <p className="text-gray-400 mb-8">Update your monitor settings</p>
+      <p className="text-white/60 mb-8">Update your monitor settings</p>
       <MonitorForm
         initialData={{
           id: monitor.id,

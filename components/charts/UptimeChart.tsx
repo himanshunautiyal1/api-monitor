@@ -23,7 +23,7 @@ interface Props {
 export default function UptimeChart({ data }: Props) {
   if (data.every((d) => d.uptime === null)) {
     return (
-      <div className="h-48 flex items-center justify-center text-gray-500">
+      <div className="h-48 flex items-center justify-center text-white/45">
         No data available yet
       </div>
     );

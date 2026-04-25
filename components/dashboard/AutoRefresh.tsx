@@ -22,7 +22,7 @@ export default function AutoRefresh() {
   }, [router]);
 
   return (
-    <div className="flex items-center gap-2 text-gray-500 text-xs">
+    <div className="flex items-center gap-2 text-white/45 text-xs">
       <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
       <span>
         {seconds === 0 ? "Refreshing..." : `Refreshes in ${30 - seconds}s`}

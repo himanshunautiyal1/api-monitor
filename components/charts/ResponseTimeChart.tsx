@@ -29,7 +29,7 @@ function sampleData(data: DataPoint[], maxPoints: number): DataPoint[] {
 export default function ResponseTimeChart({ data }: Props) {
   if (data.length === 0) {
     return (
-      <div className="h-48 flex items-center justify-center text-gray-500">
+      <div className="h-48 flex items-center justify-center text-white/45">
         No data available yet
       </div>
     );

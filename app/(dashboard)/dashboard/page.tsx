@@ -91,7 +91,7 @@ export default async function DashboardPage() {
         <h1 className="text-2xl font-bold text-white mb-2">
           Welcome, {session?.user?.name}
         </h1>
-        <p className="text-gray-400 mb-8">
+        <p className="text-white/60 mb-8">
           Get started by adding your first monitor
         </p>
         <Link
@@ -117,38 +117,74 @@ export default async function DashboardPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white mb-1">
-            Welcome, {session?.user?.name}
-          </h1>
-          <p className="text-gray-400">Here's your monitoring overview</p>
+          <div className="flex items-center gap-2.5 mb-1">
+            <div
+              className={`w-2.5 h-2.5 rounded-full ${
+                stats.downMonitors > 0
+                  ? "bg-red-400"
+                  : "bg-emerald-400 animate-pulse"
+              }`}
+            />
+            <h1
+              className={`text-lg font-semibold ${
+                stats.downMonitors > 0 ? "text-red-400" : "text-emerald-400"
+              }`}
+              style={{ fontFamily: "'Syne', sans-serif" }}
+            >
+              {stats.downMonitors > 0
+                ? `${stats.downMonitors} monitor${stats.downMonitors > 1 ? "s" : ""} down`
+                : "All systems operational"}
+            </h1>
+          </div>
+          <p
+            className="text-white/45 text-sm"
+            style={{ fontFamily: "'DM Sans', sans-serif" }}
+          >
+            {session?.user?.name} · {stats.totalMonitors} monitors
+          </p>
         </div>
         <AutoRefresh />
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <p className="text-gray-400 text-sm mb-1">Total Monitors</p>
-          <p className="text-3xl font-bold text-white">{stats.totalMonitors}</p>
-        </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <p className="text-gray-400 text-sm mb-1">Up</p>
-          <p className="text-3xl font-bold text-green-400">
-            {stats.upMonitors}
-          </p>
-        </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <p className="text-gray-400 text-sm mb-1">Down</p>
-          <p className="text-3xl font-bold text-red-400">
-            {stats.downMonitors}
-          </p>
-        </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <p className="text-gray-400 text-sm mb-1">Paused</p>
-          <p className="text-3xl font-bold text-yellow-400">
-            {stats.pausedMonitors}
-          </p>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[
+          {
+            label: "Total Monitors",
+            value: stats.totalMonitors,
+            color: "text-white",
+          },
+          { label: "Up", value: stats.upMonitors, color: "text-emerald-400" },
+          { label: "Down", value: stats.downMonitors, color: "text-red-400" },
+          {
+            label: "Paused",
+            value: stats.pausedMonitors,
+            color: "text-amber-400",
+          },
+        ].map((s) => (
+          <div
+            key={s.label}
+            className="bg-white/2 border border-white/6 rounded-xl p-5"
+          >
+            <p
+              className="text-white/30 text-xs mb-2 uppercase tracking-wider"
+              style={{ fontFamily: "'DM Sans', sans-serif" }}
+            >
+              {s.label}
+            </p>
+            <p
+              className={`text-4xl font-bold ${s.color}`}
+              style={{
+                fontFamily: "'Syne', sans-serif",
+                fontVariantNumeric: "tabular-nums",
+                fontFeatureSettings: '"tnum", "zero"',
+                letterSpacing: "-0.02em",
+              }}
+            >
+              {s.value}
+            </p>
+          </div>
+        ))}
       </div>
 
       {/* Active Incidents */}
@@ -170,7 +206,7 @@ export default async function DashboardPage() {
                   <div>
                     <Link
                       href={`/monitors/${incident.monitor.id}`}
-                      className="text-white font-medium hover:text-blue-400 transition-colors"
+                      className="text-white font-medium hover:text-white/50 transition-colors"
                     >
                       {incident.monitor.name}
                     </Link>
@@ -196,7 +232,7 @@ export default async function DashboardPage() {
           </h2>
           <Link
             href="/monitors"
-            className="text-blue-400 hover:text-blue-300 text-sm transition-colors"
+            className="text-white/50 hover:text-white/80 text-sm transition-colors underline underline-offset-2 decoration-white/20"
           >
             View all →
           </Link>
@@ -212,7 +248,7 @@ export default async function DashboardPage() {
             return (
               <div
                 key={monitor.id}
-                className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center justify-between"
+                className="bg-white/2 border border-white/6 rounded-xl p-4 flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
                   <div
@@ -229,18 +265,18 @@ export default async function DashboardPage() {
                   <div>
                     <Link
                       href={`/monitors/${monitor.id}`}
-                      className="text-white font-medium hover:text-blue-400 transition-colors"
+                      className="text-white font-medium hover:text-white/50 transition-colors"
                     >
                       {monitor.name}
                     </Link>
-                    <p className="text-gray-500 text-xs truncate max-w-xs">
+                    <p className="text-white/45 text-xs truncate max-w-xs">
                       {monitor.url}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-6 text-sm">
                   <div className="text-right">
-                    <p className="text-gray-400 text-xs">Response</p>
+                    <p className="text-white/60 text-xs">Response</p>
                     <p className="text-white">
                       {latestCheck?.responseTimeMs
                         ? `${latestCheck.responseTimeMs}ms`
@@ -248,7 +284,7 @@ export default async function DashboardPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-gray-400 text-xs">Uptime 24h</p>
+                    <p className="text-white/60 text-xs">Uptime 24h</p>
                     <p className="text-white">{uptime ? `${uptime}%` : "—"}</p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -260,7 +296,7 @@ export default async function DashboardPage() {
                             ? "bg-green-500/20 text-green-400"
                             : isDown
                               ? "bg-red-500/20 text-red-400"
-                              : "bg-gray-700 text-gray-400"
+                              : "bg-gray-700 text-white/60"
                       }`}
                     >
                       {isPaused
@@ -273,7 +309,7 @@ export default async function DashboardPage() {
                     </span>
                     <Link
                       href={`/monitors/${monitor.id}`}
-                      className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                      className="text-xs text-white/50 hover:text-white/80 transition-colors"
                     >
                       Details →
                     </Link>
@@ -303,16 +339,16 @@ export default async function DashboardPage() {
               return (
                 <div
                   key={incident.id}
-                  className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center justify-between"
+                  className="bg-white/2 border border-white/6 rounded-xl p-4 flex items-center justify-between"
                 >
                   <div>
                     <Link
                       href={`/monitors/${incident.monitor.id}`}
-                      className="text-white font-medium hover:text-blue-400 transition-colors"
+                      className="text-white font-medium hover:text-white/50 transition-colors"
                     >
                       {incident.monitor.name}
                     </Link>
-                    <p className="text-gray-400 text-sm">
+                    <p className="text-white/60 text-sm">
                       {new Date(incident.startedAt).toLocaleDateString()} —{" "}
                       {downtimeMinutes !== null
                         ? `${downtimeMinutes} min downtime`

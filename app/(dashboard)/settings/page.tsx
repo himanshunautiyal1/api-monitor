@@ -24,34 +24,34 @@ export default async function SettingsPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-white mb-2">Settings</h1>
-      <p className="text-gray-400 mb-8">
+      <h1 className="text-2xl font-bold text-white/90 mb-2">Settings</h1>
+      <p className="text-white/60 mb-8">
         Manage your account and alert preferences
       </p>
 
       {/* Account Info */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+      <div className="bg-white/2 border border-white/6 rounded-xl p-6 mb-6">
         <h2 className="text-lg font-semibold text-white mb-4">Account</h2>
         <div className="space-y-3">
           <div className="flex justify-between">
-            <span className="text-gray-400">Email</span>
+            <span className="text-white/60">Email</span>
             <span className="text-white">{user?.email}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-400">Username</span>
+            <span className="text-white/60">Username</span>
             <span className="text-white">{user?.username}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-400">Public status page</span>
-            <span className="text-blue-400">/status/{user?.username}</span>
+            <span className="text-white/60">Public status page</span>
+            <span className="text-white/50">/status/{user?.username}</span>
           </div>
         </div>
       </div>
 
       {/* Alert Configs */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+      <div className="bg-white/2 border border-white/6 rounded-xl p-6">
         <h2 className="text-lg font-semibold text-white mb-4">Email Alerts</h2>
-        <p className="text-gray-400 text-sm mb-6">
+        <p className="text-white/60 text-sm mb-6">
           Configure which email address receives alerts for each monitor.
         </p>
         <AlertConfigForm
