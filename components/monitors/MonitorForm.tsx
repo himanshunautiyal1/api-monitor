@@ -103,14 +103,14 @@ export default function MonitorForm({ initialData }: MonitorFormProps) {
 
       {/* Name */}
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
+        <label className="block text-sm font-medium text-white/70 mb-2">
           Monitor Name
         </label>
         <input
           type="text"
           value={form.name}
           onChange={(e) => updateField("name", e.target.value)}
-          className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full bg-white/4 border border-white/8 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="My API"
           required
         />
@@ -118,14 +118,14 @@ export default function MonitorForm({ initialData }: MonitorFormProps) {
 
       {/* URL */}
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
+        <label className="block text-sm font-medium text-white/70 mb-2">
           URL
         </label>
         <input
           type="url"
           value={form.url}
           onChange={(e) => updateField("url", e.target.value)}
-          className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full bg-white/4 border border-white/8 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="https://api.example.com/health"
           required
         />
@@ -134,13 +134,13 @@ export default function MonitorForm({ initialData }: MonitorFormProps) {
       {/* Method + Interval */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-white/70 mb-2">
             HTTP Method
           </label>
           <select
             value={form.method}
             onChange={(e) => updateField("method", e.target.value)}
-            className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full bg-white/4 border border-white/8 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="GET">GET</option>
             <option value="POST">POST</option>
@@ -149,7 +149,7 @@ export default function MonitorForm({ initialData }: MonitorFormProps) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-white/70 mb-2">
             Check Interval
           </label>
           <select
@@ -157,7 +157,7 @@ export default function MonitorForm({ initialData }: MonitorFormProps) {
             onChange={(e) =>
               updateField("intervalMinutes", Number(e.target.value))
             }
-            className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full bg-white/4 border border-white/8 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value={1}>Every 1 minute</option>
             <option value={5}>Every 5 minutes</option>
@@ -168,7 +168,7 @@ export default function MonitorForm({ initialData }: MonitorFormProps) {
 
       {/* Response Time Threshold */}
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
+        <label className="block text-sm font-medium text-white/70 mb-2">
           Response Time Threshold (ms)
         </label>
         <input
@@ -177,18 +177,18 @@ export default function MonitorForm({ initialData }: MonitorFormProps) {
           onChange={(e) =>
             updateField("responseTimeThreshold", Number(e.target.value))
           }
-          className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full bg-white/4 border border-white/8 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="2000"
           min={100}
         />
-        <p className="text-gray-500 text-xs mt-1">
+        <p className="text-white/45 text-xs mt-1">
           Alert if response time exceeds this value
         </p>
       </div>
 
       {/* Custom Headers */}
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
+        <label className="block text-sm font-medium text-white/70 mb-2">
           Custom Headers (optional)
         </label>
         <div className="flex gap-2 mb-2">
@@ -196,14 +196,14 @@ export default function MonitorForm({ initialData }: MonitorFormProps) {
             type="text"
             value={headerKey}
             onChange={(e) => setHeaderKey(e.target.value)}
-            className="flex-1 bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            className="flex-1 bg-white/4 border border-white/8 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             placeholder="Key"
           />
           <input
             type="text"
             value={headerValue}
             onChange={(e) => setHeaderValue(e.target.value)}
-            className="flex-1 bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            className="flex-1 bg-white/4 border border-white/8 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             placeholder="Value"
           />
           <button
@@ -217,15 +217,15 @@ export default function MonitorForm({ initialData }: MonitorFormProps) {
         {Object.entries(form.headers).map(([key, value]) => (
           <div
             key={key}
-            className="flex items-center justify-between bg-gray-800 rounded-lg px-4 py-2 mb-1"
+            className="flex items-center justify-between bg-white/4 rounded-lg px-4 py-2 mb-1"
           >
-            <span className="text-gray-300 text-sm">
-              <span className="text-blue-400">{key}</span>: {value}
+            <span className="text-white/70 text-sm">
+              <span className="text-white/50">{key}</span>: {value}
             </span>
             <button
               type="button"
               onClick={() => removeHeader(key)}
-              className="text-gray-500 hover:text-red-400 text-sm transition-colors"
+              className="text-white/45 hover:text-red-400 text-sm transition-colors"
             >
               Remove
             </button>
@@ -235,7 +235,7 @@ export default function MonitorForm({ initialData }: MonitorFormProps) {
 
       {/* Tags */}
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
+        <label className="block text-sm font-medium text-white/70 mb-2">
           Tags (optional)
         </label>
         <div className="flex gap-2 mb-2">
@@ -246,7 +246,7 @@ export default function MonitorForm({ initialData }: MonitorFormProps) {
             onKeyDown={(e) =>
               e.key === "Enter" && (e.preventDefault(), addTag())
             }
-            className="flex-1 bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            className="flex-1 bg-white/4 border border-white/8 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             placeholder="production, staging..."
           />
           <button
@@ -261,7 +261,7 @@ export default function MonitorForm({ initialData }: MonitorFormProps) {
           {form.tags.map((tag) => (
             <span
               key={tag}
-              className="flex items-center gap-1 bg-blue-500/20 text-blue-300 text-xs px-3 py-1 rounded-full"
+              className="flex items-center gap-1 bg-blue-500/20 text-white/70 text-xs px-3 py-1 rounded-full"
             >
               {tag}
               <button
@@ -294,7 +294,7 @@ export default function MonitorForm({ initialData }: MonitorFormProps) {
         <button
           type="button"
           onClick={() => router.back()}
-          className="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-6 py-3 rounded-lg transition-colors"
+          className="bg-white/4 hover:bg-white/6 text-white/70 font-semibold px-6 py-3 rounded-lg transition-colors"
         >
           Cancel
         </button>

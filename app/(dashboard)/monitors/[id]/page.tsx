@@ -128,7 +128,7 @@ export default async function MonitorDetailPage({
                       : "bg-gray-500"
               }`}
             />
-            <h1 className="text-2xl font-bold text-white">{monitor.name}</h1>
+            <h1 className="text-2xl font-bold text-white/90">{monitor.name}</h1>
             <span
               className={`text-xs px-2 py-1 rounded-full font-medium ${
                 isPaused
@@ -137,15 +137,15 @@ export default async function MonitorDetailPage({
                     ? "bg-green-500/20 text-green-400"
                     : isDown
                       ? "bg-red-500/20 text-red-400"
-                      : "bg-gray-700 text-gray-400"
+                      : "bg-gray-700 text-white/60"
               }`}
             >
               {isPaused ? "PAUSED" : isUp ? "UP" : isDown ? "DOWN" : "No data"}
             </span>
           </div>
-          <p className="text-gray-400 text-sm">{monitor.url}</p>
+          <p className="text-white/60 text-sm">{monitor.url}</p>
           {latestCheck && (
-            <p className="text-gray-500 text-xs mt-1">
+            <p className="text-white/45 text-xs mt-1">
               Last checked: {new Date(latestCheck.checkedAt).toLocaleString()}
             </p>
           )}
@@ -156,7 +156,7 @@ export default async function MonitorDetailPage({
       {activeIncident && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
           <p className="text-red-400 font-medium">⚠️ Active Incident</p>
-          <p className="text-gray-400 text-sm mt-1">
+          <p className="text-white/60 text-sm mt-1">
             Down since {new Date(activeIncident.startedAt).toLocaleString()} (
             {Math.floor(
               (Date.now() - activeIncident.startedAt.getTime()) / 60000,
@@ -168,28 +168,28 @@ export default async function MonitorDetailPage({
 
       {/* Stats Row */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <p className="text-gray-400 text-sm mb-1">Uptime (7d)</p>
+        <div className="bg-white/2 border border-white/6 rounded-xl p-5">
+          <p className="text-white/60 text-sm mb-1">Uptime (7d)</p>
           <p className="text-2xl font-bold text-white">
             {uptime7d ? `${uptime7d}%` : "—"}
           </p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <p className="text-gray-400 text-sm mb-1">Avg Response (24h)</p>
+        <div className="bg-white/2 border border-white/6 rounded-xl p-5">
+          <p className="text-white/60 text-sm mb-1">Avg Response (24h)</p>
           <p className="text-2xl font-bold text-white">
             {avgResponseTime._avg.responseTimeMs
               ? `${Math.round(avgResponseTime._avg.responseTimeMs)}ms`
               : "—"}
           </p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <p className="text-gray-400 text-sm mb-1">Total Checks (7d)</p>
+        <div className="bg-white/2 border border-white/6 rounded-xl p-5">
+          <p className="text-white/60 text-sm mb-1">Total Checks (7d)</p>
           <p className="text-2xl font-bold text-white">{totalChecks}</p>
         </div>
       </div>
 
       {/* Response Time Chart */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+      <div className="bg-white/2 border border-white/6 rounded-xl p-6">
         <h2 className="text-lg font-semibold text-white mb-6">
           Response Time (last 24h)
         </h2>
@@ -206,7 +206,7 @@ export default async function MonitorDetailPage({
       </div>
 
       {/* Uptime Chart */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+      <div className="bg-white/2 border border-white/6 rounded-xl p-6">
         <h2 className="text-lg font-semibold text-white mb-6">
           Daily Uptime (last 7 days)
         </h2>
@@ -214,27 +214,27 @@ export default async function MonitorDetailPage({
       </div>
 
       {/* Monitor Details */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+      <div className="bg-white/2 border border-white/6 rounded-xl p-6">
         <h2 className="text-lg font-semibold text-white mb-4">
           Monitor Configuration
         </h2>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <p className="text-gray-400">Method</p>
+            <p className="text-white/60">Method</p>
             <p className="text-white mt-1">{monitor.method}</p>
           </div>
           <div>
-            <p className="text-gray-400">Check Interval</p>
+            <p className="text-white/60">Check Interval</p>
             <p className="text-white mt-1">
               Every {monitor.intervalMinutes} minute(s)
             </p>
           </div>
           <div>
-            <p className="text-gray-400">Response Threshold</p>
+            <p className="text-white/60">Response Threshold</p>
             <p className="text-white mt-1">{monitor.responseTimeThreshold}ms</p>
           </div>
           <div>
-            <p className="text-gray-400">Tags</p>
+            <p className="text-white/60">Tags</p>
             <p className="text-white mt-1">
               {monitor.tags.length > 0 ? monitor.tags.join(", ") : "—"}
             </p>

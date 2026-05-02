@@ -57,7 +57,7 @@ export default function IncidentsList({
 
   if (incidents.length === 0) {
     return (
-      <div className="text-center py-20 text-gray-500">
+      <div className="text-center py-20 text-white/25">
         <p className="text-lg">No incidents yet</p>
         <p className="text-sm mt-1">
           Incidents are created when a monitor goes down
@@ -83,10 +83,10 @@ export default function IncidentsList({
               >
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-white font-semibold">
+                    <p className="text-white/90 font-medium">
                       {incident.monitorName}
                     </p>
-                    <p className="text-gray-400 text-sm mt-1 truncate max-w-md">
+                    <p className="text-white/40 text-sm mt-1 truncate max-w-md">
                       {incident.monitorUrl}
                     </p>
                   </div>
@@ -94,7 +94,7 @@ export default function IncidentsList({
                     Ongoing
                   </span>
                 </div>
-                <div className="flex items-center gap-6 mt-4 text-sm text-gray-400">
+                <div className="flex items-center gap-6 mt-2 text-xs text-white/40">
                   <span>
                     Started: {new Date(incident.startedAt).toLocaleString()}
                   </span>
@@ -119,14 +119,14 @@ export default function IncidentsList({
             {resolvedIncidents.map((incident) => (
               <div
                 key={incident.id}
-                className="bg-gray-900 border border-gray-800 rounded-xl p-5"
+                className="bg-white/2 border border-white/6 rounded-xl p-5"
               >
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-white font-semibold">
+                    <p className="text-white/90 font-medium">
                       {incident.monitorName}
                     </p>
-                    <p className="text-gray-400 text-sm mt-1 truncate max-w-md">
+                    <p className="text-white/40 text-sm mt-1 truncate max-w-md">
                       {incident.monitorUrl}
                     </p>
                   </div>
@@ -134,7 +134,7 @@ export default function IncidentsList({
                     Resolved
                   </span>
                 </div>
-                <div className="flex items-center gap-6 mt-4 text-sm text-gray-400">
+                <div className="flex items-center gap-6 mt-4 text-sm text-white/40">
                   <span>
                     Started: {new Date(incident.startedAt).toLocaleString()}
                   </span>
@@ -159,7 +159,7 @@ export default function IncidentsList({
               <button
                 onClick={loadMore}
                 disabled={loading}
-                className="bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-white px-6 py-3 rounded-lg transition-colors text-sm font-medium"
+                className="bg-white/4 hover:bg-white/6 disabled:opacity-50 text-white px-6 py-3 rounded-lg transition-colors text-sm font-medium"
               >
                 {loading
                   ? "Loading..."

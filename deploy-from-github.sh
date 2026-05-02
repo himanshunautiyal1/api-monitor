@@ -53,6 +53,8 @@ echo "⚙️ Generating Prisma client..."
 npx prisma generate
 
 echo "🔄 Restarting PM2..."
+echo "⏳ Waiting before restart..."
+sleep 3
 pm2 restart $PM2_NAME || pm2 start ecosystem.config.js
 
 pm2 save --force

@@ -17,19 +17,20 @@ export default async function MonitorsPage() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-white">Monitors</h1>
-          <p className="text-gray-400 mt-1">Manage your API monitors</p>
+          <h1 className="text-2xl font-bold text-white/90">Monitors</h1>
+
+          <p className="text-white/60 mt-1">Manage your API monitors</p>
         </div>
         <Link
           href="/monitors/new"
-          className="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2 rounded-lg transition-colors"
+          className="bg-emerald-500 hover:bg-emerald-400 text-black font-semibold px-4 py-2 rounded-lg transition-colors"
         >
           Add Monitor
         </Link>
       </div>
 
       {monitors.length === 0 ? (
-        <div className="text-center py-20 text-gray-500">
+        <div className="text-center py-20 text-white/45">
           <p className="text-lg">No monitors yet</p>
           <p className="text-sm mt-1">Add your first monitor to get started</p>
         </div>

@@ -81,20 +81,20 @@ export default function AlertConfigForm({ monitors, alertConfigs }: Props) {
         )}
 
         {monitors.length === 0 ? (
-          <p className="text-gray-500 text-sm">
+          <p className="text-white/45 text-sm">
             Add a monitor first before configuring alerts.
           </p>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-white/70 mb-2">
                   Monitor
                 </label>
                 <select
                   value={monitorId}
                   onChange={(e) => setMonitorId(Number(e.target.value))}
-                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full bg-white/4 border border-white/8 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   {monitors.map((monitor) => (
                     <option key={monitor.id} value={monitor.id}>
@@ -105,14 +105,14 @@ export default function AlertConfigForm({ monitors, alertConfigs }: Props) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-white/70 mb-2">
                   Email Address
                 </label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full bg-white/4 border border-white/8 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="you@example.com"
                   required
                 />
@@ -122,7 +122,7 @@ export default function AlertConfigForm({ monitors, alertConfigs }: Props) {
             <button
               type="submit"
               disabled={loading}
-              className="bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+              className="bg-emerald-500 hover:bg-emerald-400 text-black disabled:bg-blue-800 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
             >
               {loading ? "Adding..." : "Add Alert"}
             </button>
@@ -133,20 +133,20 @@ export default function AlertConfigForm({ monitors, alertConfigs }: Props) {
       {/* Existing alert configs */}
       {alertConfigs.length > 0 && (
         <div>
-          <h3 className="text-sm font-medium text-gray-400 mb-3">
+          <h3 className="text-sm font-medium text-white/60 mb-3">
             Configured Alerts
           </h3>
           <div className="space-y-2">
             {alertConfigs.map((config) => (
               <div
                 key={config.id}
-                className="flex items-center justify-between bg-gray-800 rounded-lg px-4 py-3"
+                className="flex items-center justify-between bg-white/4 rounded-lg px-4 py-3"
               >
                 <div>
                   <p className="text-white text-sm font-medium">
                     {config.monitorName}
                   </p>
-                  <p className="text-gray-400 text-xs">{config.destination}</p>
+                  <p className="text-white/60 text-xs">{config.destination}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -154,7 +154,7 @@ export default function AlertConfigForm({ monitors, alertConfigs }: Props) {
                     className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${
                       config.isActive
                         ? "bg-green-500/20 text-green-400 hover:bg-green-500/30"
-                        : "bg-gray-700 text-gray-400 hover:bg-gray-600"
+                        : "bg-gray-700 text-white/60 hover:bg-gray-600"
                     }`}
                   >
                     {config.isActive ? "Active" : "Paused"}

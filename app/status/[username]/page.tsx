@@ -23,12 +23,12 @@ export default async function StatusPage({
 
   if (monitors.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-[#080808] flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-white mb-2">
             {username}&apos;s Status Page
           </h1>
-          <p className="text-gray-400">No monitors configured yet</p>
+          <p className="text-white/60">No monitors configured yet</p>
         </div>
       </div>
     );
@@ -73,14 +73,14 @@ export default async function StatusPage({
   const anyDown = latestChecks.some((c) => c?.status === "down");
 
   return (
-    <div className="min-h-screen bg-gray-950">
+    <div className="min-h-screen bg-[#080808]">
       <div className="max-w-3xl mx-auto px-4 py-16">
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-3xl font-bold text-white mb-2">
             {username}&apos;s API Status
           </h1>
-          <p className="text-gray-400 text-sm">
+          <p className="text-white/60 text-sm">
             Last updated: {new Date().toLocaleString()}
           </p>
         </div>
@@ -150,7 +150,7 @@ export default async function StatusPage({
               return (
                 <div
                   key={monitor.id}
-                  className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center justify-between"
+                  className="bg-white/2 border border-white/6 rounded-xl p-4 flex items-center justify-between"
                 >
                   <div className="flex items-center gap-3">
                     <div
@@ -169,7 +169,7 @@ export default async function StatusPage({
                           {monitor.tags.map((tag) => (
                             <span
                               key={tag}
-                              className="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full"
+                              className="text-xs bg-white/4 text-white/60 px-2 py-0.5 rounded-full"
                             >
                               {tag}
                             </span>
@@ -180,7 +180,7 @@ export default async function StatusPage({
                   </div>
                   <div className="flex items-center gap-6 text-sm">
                     <div className="text-right">
-                      <p className="text-gray-400 text-xs">Uptime 7d</p>
+                      <p className="text-white/60 text-xs">Uptime 7d</p>
                       <p className="text-white">
                         {uptime ? `${uptime}%` : "—"}
                       </p>
@@ -191,7 +191,7 @@ export default async function StatusPage({
                           ? "bg-green-500/20 text-green-400"
                           : isDown
                             ? "bg-red-500/20 text-red-400"
-                            : "bg-gray-700 text-gray-400"
+                            : "bg-gray-700 text-white/60"
                       }`}
                     >
                       {isUp ? "Operational" : isDown ? "Down" : "No data"}
@@ -207,7 +207,7 @@ export default async function StatusPage({
         <div className="text-center mt-12">
           <p className="text-gray-600 text-sm">
             Powered by{" "}
-            <span className="text-gray-500 font-medium">API Monitor</span>
+            <span className="text-white/45 font-medium">API Monitor</span>
           </p>
         </div>
       </div>

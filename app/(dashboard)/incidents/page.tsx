@@ -29,8 +29,8 @@ export default async function IncidentsPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Incidents</h1>
-        <p className="text-gray-400 mt-1">
+        <h1 className="text-2xl font-bold text-white/90">Incidents</h1>
+        <p className="text-white/60 mt-1">
           History of all downtime events across your monitors
         </p>
       </div>
