@@ -1,38 +1,54 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
-    // Pre-resolve Neon's hostname using Google DNS.
-    // Android/Termux on mobile hotspot uses the carrier's DNS which
-    // may fail to resolve Neon's hostname.
+    // Fix DNS on mobile hotspot: Android's DNS resolver fails for
+    // some hostnames. Patch Node's dns.lookup to use Google DNS.
+    //
+    // We use createRequire to get a mutable CJS reference — the ESM
+    // import returns a readonly module namespace (which caused the
+    // "Cannot set property lookup" error).
     try {
-      const dns = await import("node:dns");
+      const { createRequire } = await import("node:module");
+      const cjsRequire = createRequire(`file://${process.cwd()}/`);
+      const dns = cjsRequire("dns");
+
       const resolver = new dns.Resolver();
       resolver.setServers(["8.8.8.8", "1.1.1.1"]);
 
-      // Extract hostname from DATABASE_URL using regex (not URL API,
-      // because URL API doesn't handle postgresql:// correctly)
-      const dbUrl = process.env.DATABASE_URL!;
-      const hostMatch = dbUrl.match(/@([^/:?]+)/);
+      const origLookup = dns.lookup;
 
-      if (hostMatch) {
-        const originalHost = hostMatch[1];
+      dns.lookup = function (
+        hostname: string,
+        optionsOrCallback: any,
+        maybeCallback?: any,
+      ) {
+        const callback =
+          typeof optionsOrCallback === "function"
+            ? optionsOrCallback
+            : maybeCallback;
 
-        const addresses = await new Promise<string[]>((resolve, reject) => {
-          resolver.resolve4(originalHost, (err, addrs) => {
-            if (err) reject(err);
-            else resolve(addrs);
-          });
-        });
-
-        if (addresses.length > 0) {
-          // Replace hostname with resolved IP in the connection string
-          const resolvedUrl = dbUrl.replace(originalHost, addresses[0]);
-          process.env._DB_RESOLVED_URL = resolvedUrl;
-          process.env._DB_ORIGINAL_HOST = originalHost;
-          console.log(`🌐 DNS: Resolved ${originalHost} → ${addresses[0]}`);
+        // Pass through for localhost, IPs, or missing callback
+        if (
+          !hostname ||
+          !callback ||
+          hostname === "localhost" ||
+          /^[\d.]+$/.test(hostname) ||
+          hostname.includes(":")
+        ) {
+          return origLookup.call(dns, hostname, optionsOrCallback, maybeCallback);
         }
-      }
+
+        // Resolve via Google DNS, fall back to system DNS on error
+        resolver.resolve4(hostname, (err: Error | null, addresses: string[]) => {
+          if (err || !addresses || addresses.length === 0) {
+            return origLookup.call(dns, hostname, optionsOrCallback, maybeCallback);
+          }
+          callback(null, addresses[0], 4);
+        });
+      };
+
+      console.log("🌐 DNS override active (Google DNS 8.8.8.8)");
     } catch (err) {
-      console.log("🌐 DNS pre-resolution skipped, using system DNS:", err);
+      console.log("🌐 DNS override failed, using system DNS:", err);
     }
 
     const { startChecker } = await import("./lib/checker/index");
