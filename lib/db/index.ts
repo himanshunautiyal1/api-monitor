@@ -6,28 +6,37 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient() {
-  // Pass a PoolConfig with proper idle/connection timeouts for Neon + Termux.
-  // Neon's PgBouncer drops idle connections after ~60s, so we set idleTimeoutMillis
-  // lower than that to force the internal pool to refresh stale connections.
-  const adapter = new PrismaPg(
-    {
-      connectionString: process.env.DATABASE_URL!,
-      max: 5,
-      // Kill idle connections before Neon's pooler does (Neon drops after ~60s)
-      idleTimeoutMillis: 20000,
-      // Don't wait forever for a connection
-      connectionTimeoutMillis: 10000,
+  const resolvedUrl = process.env._DB_RESOLVED_URL;
+  const originalHost = process.env._DB_ORIGINAL_HOST;
+  const connectionString = resolvedUrl || process.env.DATABASE_URL!;
+
+  // If we pre-resolved the hostname to an IP (for mobile hotspot DNS fix),
+  // we need to set SSL servername to the original hostname so that:
+  // 1. TLS SNI sends the correct hostname (Neon uses it for routing)
+  // 2. Certificate verification matches the original hostname
+  const poolConfig: import("pg").PoolConfig = {
+    connectionString,
+    max: 5,
+    idleTimeoutMillis: 20000,
+    connectionTimeoutMillis: 10000,
+    ...(resolvedUrl && originalHost
+      ? {
+          ssl: {
+            servername: originalHost,
+            rejectUnauthorized: true,
+          },
+        }
+      : {}),
+  };
+
+  const adapter = new PrismaPg(poolConfig, {
+    onPoolError: (err) => {
+      console.error("Postgres pool error:", err.message);
     },
-    {
-      // Log pool-level errors instead of crashing silently
-      onPoolError: (err) => {
-        console.error("Postgres pool error:", err.message);
-      },
-      onConnectionError: (err) => {
-        console.error("Postgres connection error:", err.message);
-      },
+    onConnectionError: (err) => {
+      console.error("Postgres connection error:", err.message);
     },
-  );
+  });
 
   return new PrismaClient({ adapter });
 }
@@ -35,7 +44,6 @@ function createPrismaClient() {
 const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
 // Cache in ALL environments — the cron checker needs a stable singleton.
-// Next.js module caching handles deduplication, but this is a safety net.
 globalForPrisma.prisma = prisma;
 
 export default prisma;

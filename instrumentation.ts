@@ -1,48 +1,33 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
-    // Fix DNS resolution on mobile hotspot.
-    // Android/Termux ignores /etc/resolv.conf — it uses the carrier's
-    // DNS resolver, which may fail to resolve certain hostnames (like
-    // Neon's pooler endpoint). Override Node.js's dns.lookup() to use
-    // Google DNS (8.8.8.8) as the primary resolver.
-    const dns = await import("node:dns");
-    const resolver = new dns.Resolver();
-    resolver.setServers(["8.8.8.8", "1.1.1.1"]);
+    // Pre-resolve Neon's hostname using Google DNS.
+    // Android/Termux on mobile hotspot uses the carrier's DNS which
+    // may fail to resolve Neon's hostname. We resolve it once at
+    // startup and store the IP for the DB connection to use.
+    try {
+      const dns = await import("node:dns");
+      const resolver = new dns.Resolver();
+      resolver.setServers(["8.8.8.8", "1.1.1.1"]);
 
-    const origLookup = dns.lookup;
+      const dbUrl = new URL(process.env.DATABASE_URL!);
+      const originalHost = dbUrl.hostname;
 
-    (dns as any).lookup = function (
-      hostname: string,
-      optionsOrCallback: any,
-      maybeCallback?: any,
-    ) {
-      const callback =
-        typeof optionsOrCallback === "function"
-          ? optionsOrCallback
-          : maybeCallback;
-
-      // Pass through for localhost, IP addresses, or if no callback
-      if (
-        !hostname ||
-        !callback ||
-        hostname === "localhost" ||
-        /^[\d.]+$/.test(hostname) ||
-        hostname.includes(":")
-      ) {
-        return origLookup(hostname, optionsOrCallback, maybeCallback);
-      }
-
-      // Use Google DNS to resolve
-      resolver.resolve4(hostname, (err, addresses) => {
-        if (err || !addresses || addresses.length === 0) {
-          // Fall back to system DNS if Google DNS fails
-          return origLookup(hostname, optionsOrCallback, maybeCallback);
-        }
-        callback(null, addresses[0], 4);
+      const addresses = await new Promise<string[]>((resolve, reject) => {
+        resolver.resolve4(originalHost, (err, addrs) => {
+          if (err) reject(err);
+          else resolve(addrs);
+        });
       });
-    };
 
-    console.log("🌐 DNS override active (using Google DNS 8.8.8.8)");
+      if (addresses.length > 0) {
+        dbUrl.hostname = addresses[0];
+        process.env._DB_RESOLVED_URL = dbUrl.toString();
+        process.env._DB_ORIGINAL_HOST = originalHost;
+        console.log(`🌐 DNS: Resolved ${originalHost} → ${addresses[0]}`);
+      }
+    } catch (err) {
+      console.log("🌐 DNS pre-resolution skipped, using system DNS:", err);
+    }
 
     const { startChecker } = await import("./lib/checker/index");
     startChecker();
