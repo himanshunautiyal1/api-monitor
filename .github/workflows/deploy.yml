@@ -71,6 +71,7 @@ jobs:
           curl -X POST \
             -H "Content-Type: application/json" \
             -H "x-webhook-secret: ${{ secrets.WEBHOOK_SECRET }}" \
+            -H "localtonet-skip-warning: 1" \
             "${{ secrets.NEXTAUTH_URL }}/api/webhook/deploy" \
             --fail \
             --silent \
