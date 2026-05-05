@@ -42,7 +42,6 @@ export function startChecker() {
 
 async function runChecks() {
   const now = new Date();
-  const minutesSinceEpoch = Math.floor(now.getTime() / 60000);
 
   console.log(`🔍 runChecks: fetching active monitors...`);
 
@@ -62,17 +61,45 @@ async function runChecks() {
     return;
   }
 
+  // For each monitor, check if enough time has passed since its last check.
+  // This is more resilient than the old modulo approach — if cron misses
+  // several ticks (common on phone due to CPU throttling), the next
+  // successful tick will still run overdue checks instead of skipping them.
   for (const monitor of monitors) {
-    const shouldRun = minutesSinceEpoch % monitor.intervalMinutes === 0;
+    let shouldRun = false;
+
+    try {
+      const lastCheck = await prisma.checkHistory.findFirst({
+        where: { monitorId: monitor.id },
+        orderBy: { checkedAt: "desc" },
+        select: { checkedAt: true },
+      });
+
+      if (!lastCheck) {
+        // Never checked before — run immediately
+        shouldRun = true;
+      } else {
+        const msSinceLastCheck = now.getTime() - lastCheck.checkedAt.getTime();
+        const intervalMs = monitor.intervalMinutes * 60 * 1000;
+        // Run if at least 90% of the interval has passed (small buffer to
+        // avoid running twice in the same minute due to timing jitter)
+        shouldRun = msSinceLastCheck >= intervalMs * 0.9;
+      }
+    } catch (error) {
+      console.error(
+        `❌ Failed to check last run time for ${monitor.name}:`,
+        error,
+      );
+      // If we can't check, try running anyway
+      shouldRun = true;
+    }
+
     console.log(
-      `🔍 Monitor "${monitor.name}" (interval=${monitor.intervalMinutes}m): ` +
-        `${minutesSinceEpoch} % ${monitor.intervalMinutes} = ${minutesSinceEpoch % monitor.intervalMinutes} → ${shouldRun ? "WILL CHECK" : "skipping"}`,
+      `🔍 Monitor "${monitor.name}" (interval=${monitor.intervalMinutes}m): ${shouldRun ? "WILL CHECK" : "skipping (not due yet)"}`,
     );
 
     if (!shouldRun) continue;
 
-    // Await each monitor check sequentially to avoid overwhelming the DB
-    // on resource-constrained devices (phone)
     try {
       await checkMonitor(monitor);
     } catch (err) {
