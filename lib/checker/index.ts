@@ -1,181 +1,154 @@
 import cron from "node-cron";
-import { prisma } from "../db";
+import prisma from "@/lib/db";
 import { pingMonitor } from "./ping";
-import { sendDownAlert, sendRecoveryAlert } from "./alerts";
+import { sendDownAlert, sendRecoveryAlert, sendWeeklySummary } from "./alerts";
 
 let isRunning = false;
 
 export function startChecker() {
-  if (isRunning) {
-    console.log("[Checker] Already running — skipping duplicate start");
-    return;
-  }
+  if (isRunning) return;
   isRunning = true;
-  console.log("[Checker] Background checker started");
 
-  // Runs every minute — the per-monitor interval is handled inside
+  console.log("✅ Background checker started");
+
+  // main checker — runs every minute
   cron.schedule("* * * * *", async () => {
     try {
       await runChecks();
-    } catch (err) {
-      // Top-level catch so cron NEVER silently dies
-      console.error("[Checker] Unhandled error in runChecks:", err);
+    } catch (error) {
+      console.error("Checker error:", error);
+    }
+  });
+
+  // data retention — runs every day at midnight
+  cron.schedule("0 0 * * *", async () => {
+    try {
+      await cleanOldData();
+    } catch (error) {
+      console.error("Cleanup error:", error);
+    }
+  });
+
+  // weekly summary — runs every monday at 9am
+  cron.schedule("0 9 * * 1", async () => {
+    try {
+      await sendWeeklySummary();
+    } catch (error) {
+      console.error("Weekly summary error:", error);
     }
   });
 }
 
 async function runChecks() {
   const now = new Date();
-  const currentMinute = now.getMinutes();
 
-  // Fetch only active monitors
   const monitors = await prisma.monitor.findMany({
     where: { isActive: true },
   });
 
-  if (monitors.length === 0) return;
+  for (const monitor of monitors) {
+    // check if it's time to ping this monitor
+    const minutesSinceEpoch = Math.floor(now.getTime() / 60000);
+    if (minutesSinceEpoch % monitor.intervalMinutes !== 0) continue;
 
-  // Run all checks in parallel (safe for small counts on phone RAM)
-  await Promise.allSettled(
-    monitors.map(async (monitor) => {
-      try {
-        // Respect the per-monitor interval
-        if (currentMinute % monitor.intervalMinutes !== 0) return;
-
-        await checkMonitor(monitor);
-      } catch (err) {
-        console.error(`[Checker] Error checking monitor ${monitor.id}:`, err);
-      }
-    }),
-  );
+    // run ping in background — don't await so monitors run in parallel
+    checkMonitor(monitor).catch((err) =>
+      console.error(`Error checking monitor ${monitor.id}:`, err),
+    );
+  }
 }
 
-async function checkMonitor(monitor: {
-  id: string;
-  userId: string;
-  url: string;
-  method: string;
-  headers: unknown;
-  responseTimeThreshold: number | null;
-  isActive: boolean;
-  intervalMinutes: number;
-}) {
-  const result = await pingMonitor(monitor);
+async function checkMonitor(
+  monitor: Awaited<ReturnType<typeof prisma.monitor.findFirst>> & object,
+) {
+  const result = await pingMonitor(monitor as any);
 
-  // ─── THE CRITICAL FIX: Explicit try/catch around EVERY DB write ───────────
-  // Prisma 7 silent failures were causing check_history to never be written.
-  // ─────────────────────────────────────────────────────────────────────────
-  let savedCheck: {
-    id: string;
-    status: string;
-    responseTimeMs: number | null;
-  } | null = null;
+  // save to check_history — with explicit error handling
+  let savedCheck;
   try {
     savedCheck = await prisma.checkHistory.create({
       data: {
         monitorId: monitor.id,
-        status: result.status, // "up" | "down" | "timeout"
-        responseTimeMs: result.responseTimeMs ?? null,
-        statusCode: result.statusCode ?? null,
-        errorMessage: result.errorMessage ?? null,
-        checkedAt: new Date(),
+        status: result.status,
+        responseTimeMs: result.responseTimeMs,
+        statusCode: result.statusCode,
+        errorMessage: result.errorMessage,
       },
-      select: { id: true, status: true, responseTimeMs: true },
     });
     console.log(
-      `[Checker] ✓ check_history saved for ${monitor.url} → ${result.status} (${result.responseTimeMs ?? "n/a"}ms)`,
+      `📊 Check saved: ${monitor.name} → ${result.status} (${result.responseTimeMs}ms)`,
     );
-  } catch (dbErr) {
+  } catch (dbError) {
+    // Log the ACTUAL error instead of swallowing it
     console.error(
-      `[Checker] ✗ DB write FAILED for monitor ${monitor.id}:`,
-      dbErr,
+      `❌ DB write failed for monitor ${monitor.name} (${monitor.id}):`,
+      dbError,
     );
-    // Still proceed with alert logic using in-memory result
+    // Don't proceed with status change detection if DB write failed
+    // because the comparison data would be inconsistent
+    return;
   }
 
-  // Determine effective status (threshold check)
-  const effectiveStatus = determineEffectiveStatus(
-    result,
-    monitor.responseTimeThreshold,
-  );
+  // get last check to detect status change
+  const previousCheck = await prisma.checkHistory.findFirst({
+    where: { monitorId: monitor.id },
+    orderBy: { checkedAt: "desc" },
+    skip: 1, // skip the one we just created
+  });
 
-  // Fetch last check (before this one) to detect transitions
-  const previousCheck = await prisma.checkHistory
-    .findFirst({
-      where: {
-        monitorId: monitor.id,
-        // Exclude the one we just inserted
-        ...(savedCheck ? { NOT: { id: savedCheck.id } } : {}),
-      },
-      orderBy: { checkedAt: "desc" },
-      select: { status: true },
-    })
-    .catch(() => null);
+  const statusChanged = previousCheck && previousCheck.status !== result.status;
 
-  const previousStatus = previousCheck?.status ?? "up"; // Assume up on first ever check
+  if (statusChanged) {
+    if (result.status === "down") {
+      // create incident
+      await prisma.incident.create({
+        data: { monitorId: monitor.id },
+      });
 
-  // ── Transition: up → down ────────────────────────────────────────────────
-  if (effectiveStatus === "down" && previousStatus !== "down") {
-    console.log(`[Checker] ALERT: ${monitor.url} went DOWN`);
-
-    // Open a new incident
-    await prisma.incident
-      .create({
-        data: {
-          monitorId: monitor.id,
-          startedAt: new Date(),
-          isResolved: false,
-        },
-      })
-      .catch((err) =>
-        console.error("[Checker] Failed to create incident:", err),
+      // send down alert
+      await sendDownAlert(
+        monitor.id,
+        monitor.name,
+        monitor.url,
+        result.errorMessage,
       );
-
-    // Send email — errors here must NOT crash the checker
-    await sendDownAlert(monitor.id, monitor.url, result).catch((err) =>
-      console.error("[Checker] Down alert email failed:", err),
-    );
-  }
-
-  // ── Transition: down → up ────────────────────────────────────────────────
-  if (effectiveStatus === "up" && previousStatus === "down") {
-    console.log(`[Checker] RECOVERY: ${monitor.url} is back UP`);
-
-    // Resolve open incidents
-    await prisma.incident
-      .updateMany({
+    } else {
+      // resolve active incident
+      const activeIncident = await prisma.incident.findFirst({
         where: { monitorId: monitor.id, isResolved: false },
-        data: { resolvedAt: new Date(), isResolved: true },
-      })
-      .catch((err) =>
-        console.error("[Checker] Failed to resolve incident:", err),
-      );
+      });
 
-    // Send recovery email
-    await sendRecoveryAlert(monitor.id, monitor.url, result).catch((err) =>
-      console.error("[Checker] Recovery alert email failed:", err),
-    );
+      if (activeIncident) {
+        const downtimeMinutes = Math.floor(
+          (Date.now() - activeIncident.startedAt.getTime()) / 60000,
+        );
+
+        await prisma.incident.update({
+          where: { id: activeIncident.id },
+          data: {
+            isResolved: true,
+            resolvedAt: new Date(),
+          },
+        });
+
+        await sendRecoveryAlert(
+          monitor.id,
+          monitor.name,
+          monitor.url,
+          downtimeMinutes,
+        );
+      }
+    }
   }
 }
 
-function determineEffectiveStatus(
-  result: { status: string; responseTimeMs?: number | null },
-  threshold: number | null,
-): "up" | "down" {
-  if (result.status !== "up") return "down";
+async function cleanOldData() {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  // Threshold check: even a 200 OK is "down" if it's too slow
-  if (
-    threshold != null &&
-    threshold > 0 &&
-    result.responseTimeMs != null &&
-    result.responseTimeMs > threshold
-  ) {
-    console.log(
-      `[Checker] Threshold exceeded: ${result.responseTimeMs}ms > ${threshold}ms`,
-    );
-    return "down";
-  }
+  const deleted = await prisma.checkHistory.deleteMany({
+    where: { checkedAt: { lt: thirtyDaysAgo } },
+  });
 
-  return "up";
+  console.log(`🧹 Cleaned ${deleted.count} old check history records`);
 }

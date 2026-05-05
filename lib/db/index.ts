@@ -1,47 +1,41 @@
-import { PrismaClient } from "../generated/prisma";
+import { PrismaClient } from "@/lib/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
-
-// Prisma 7 requires explicit adapter + connection management.
-// In dev, Next.js hot-reloads create new instances — the global singleton
-// prevents "too many connections" errors and ensures the Pool is reused.
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
-  pool: Pool | undefined;
 };
 
 function createPrismaClient() {
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    // Neon serverless + Termux: keep the pool small to avoid hitting
-    // Neon's connection limit on the free tier.
-    max: 3,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
-    ssl: { rejectUnauthorized: false }, // Required for Neon on Termux
-  });
+  // Pass a PoolConfig with proper idle/connection timeouts for Neon + Termux.
+  // Neon's PgBouncer drops idle connections after ~60s, so we set idleTimeoutMillis
+  // lower than that to force the internal pool to refresh stale connections.
+  const adapter = new PrismaPg(
+    {
+      connectionString: process.env.DATABASE_URL!,
+      max: 5,
+      // Kill idle connections before Neon's pooler does (Neon drops after ~60s)
+      idleTimeoutMillis: 20000,
+      // Don't wait forever for a connection
+      connectionTimeoutMillis: 10000,
+    },
+    {
+      // Log pool-level errors instead of crashing silently
+      onPoolError: (err) => {
+        console.error("Postgres pool error:", err.message);
+      },
+      onConnectionError: (err) => {
+        console.error("Postgres connection error:", err.message);
+      },
+    },
+  );
 
-  globalForPrisma.pool = pool;
-
-  const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });
 }
 
-// ─── THE CRITICAL FIX ────────────────────────────────────────────────────────
-// Prisma 7 does NOT auto-connect. You must call $connect() before any query.
-// We do it once here at module load time so the checker cron never hits a
-// "client not connected" silent failure.
-// ─────────────────────────────────────────────────────────────────────────────
-if (!globalForPrisma.prisma) {
-  const client = createPrismaClient();
-  globalForPrisma.prisma = client;
+const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
-  // Connect immediately — do NOT leave this unawaited in production.
-  client.$connect().catch((err) => {
-    console.error("[DB] Failed to connect to Neon PostgreSQL:", err);
-    process.exit(1);
-  });
-}
+// Cache in ALL environments — the cron checker needs a stable singleton.
+// Next.js module caching handles deduplication, but this is a safety net.
+globalForPrisma.prisma = prisma;
 
-export const prisma = globalForPrisma.prisma;
+export default prisma;

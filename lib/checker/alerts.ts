@@ -1,135 +1,220 @@
 import nodemailer from "nodemailer";
-import { prisma } from "../db";
-import type { PingResult } from "./ping";
+import type SMTPTransport from "nodemailer/lib/smtp-transport";
+import prisma from "@/lib/db";
 
-// ── THE CRITICAL FIX: Create a FRESH transporter per send ────────────────────
-//
-// Reusing a single Nodemailer transporter as a module-level singleton fails on
-// Termux because:
-//   1. Android battery optimization kills idle TCP connections
-//   2. The SMTP keep-alive connection becomes stale after a few minutes
-//   3. The next send attempt uses the dead socket → silent failure / ECONNRESET
-//
-// Fix: create a new transporter for every email, with a short connection timeout.
-// This is slightly slower but 100% reliable on constrained Android hardware.
-// ─────────────────────────────────────────────────────────────────────────────
-
+// Create a fresh transporter for each send operation.
+// Gmail closes idle SMTP connections after ~5 minutes, and Android/Termux
+// battery optimization can kill the socket even sooner. A singleton transporter
+// will silently fail after being idle.
 function createTransporter() {
-  return nodemailer.createTransport({
-    host: process.env.EMAIL_HOST ?? "smtp.gmail.com",
-    port: Number(process.env.EMAIL_PORT ?? 587),
-    secure: false, // PORT 587 uses STARTTLS — NOT SSL (that's 465)
+  const options: SMTPTransport.Options = {
+    host: process.env.EMAIL_HOST,
+    port: Number(process.env.EMAIL_PORT),
+    secure: false,
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
-    // ── Critical for Termux ──────────────────────────────────────────────
+    // Termux has incomplete CA certificates — allow self-signed
     tls: {
-      rejectUnauthorized: false, // Termux cert chain is incomplete
-      minVersion: "TLSv1.2",
+      rejectUnauthorized: false,
     },
-    // Short timeouts so a failed send doesn't block the cron job for minutes
-    connectionTimeout: 10_000, // 10s to connect
-    greetingTimeout: 10_000, // 10s for SMTP greeting
-    socketTimeout: 15_000, // 15s for data transfer
-    // Force a new connection — no pooling
-    pool: false,
-  });
+  };
+  return nodemailer.createTransport(options);
 }
 
-async function sendEmail(
-  to: string,
-  subject: string,
-  html: string,
-): Promise<void> {
+async function sendMail(options: nodemailer.SendMailOptions) {
   const transporter = createTransporter();
   try {
-    await transporter.sendMail({
-      from: `"API Monitor" <${process.env.EMAIL_USER}>`,
-      to,
-      subject,
-      html,
-    });
-    console.log(`[Alerts] Email sent to ${to}: ${subject}`);
+    const result = await transporter.sendMail(options);
+    console.log(`📧 Email sent to ${options.to}: ${result.messageId}`);
+    return result;
+  } catch (error) {
+    console.error(`📧 Email failed to ${options.to}:`, error);
+    throw error;
   } finally {
-    // Always close — prevents socket leak on Termux
     transporter.close();
   }
 }
 
-async function getAlertRecipients(monitorId: string): Promise<string[]> {
-  const configs = await prisma.alertConfig
-    .findMany({
-      where: {
-        monitorId,
-        channel: "email",
-        isActive: true,
-      },
-      select: { destination: true },
-    })
-    .catch(() => []);
-
-  return configs.map((c) => c.destination).filter(Boolean);
-}
-
 export async function sendDownAlert(
-  monitorId: string,
-  url: string,
-  result: PingResult,
-): Promise<void> {
-  const recipients = await getAlertRecipients(monitorId);
-  if (recipients.length === 0) {
-    console.warn(`[Alerts] No email recipients for monitor ${monitorId}`);
-    return;
+  monitorId: number,
+  monitorName: string,
+  monitorUrl: string,
+  errorMessage: string | null,
+) {
+  const alertConfigs = await prisma.alertConfig.findMany({
+    where: { monitorId, isActive: true },
+    include: { user: true },
+  });
+
+  if (alertConfigs.length === 0) return;
+
+  for (const config of alertConfigs) {
+    try {
+      await sendMail({
+        from: `"API Monitor" <${process.env.EMAIL_USER}>`,
+        to: config.destination,
+        subject: `🔴 ${monitorName} is DOWN`,
+        html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #ef4444;">⚠️ Monitor Down Alert</h2>
+          <p><strong>${monitorName}</strong> is not responding.</p>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px; color: #6b7280;">URL</td>
+              <td style="padding: 8px;">${monitorUrl}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; color: #6b7280;">Error</td>
+              <td style="padding: 8px; color: #ef4444;">${errorMessage || "No response"}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; color: #6b7280;">Time</td>
+              <td style="padding: 8px;">${new Date().toUTCString()}</td>
+            </tr>
+          </table>
+          <p style="color: #6b7280; font-size: 14px;">
+            You are receiving this because you have alerts enabled for this monitor.
+          </p>
+        </div>
+      `,
+      });
+    } catch {
+      // Error already logged in sendMail — continue to next recipient
+    }
   }
-
-  const subject = `🔴 DOWN: ${url}`;
-  const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px;">
-      <div style="background: #ef4444; color: white; padding: 16px 24px; border-radius: 8px 8px 0 0;">
-        <h2 style="margin: 0;">🔴 API is Down</h2>
-      </div>
-      <div style="background: #fff; border: 1px solid #e5e7eb; padding: 24px; border-radius: 0 0 8px 8px;">
-        <p><strong>URL:</strong> ${url}</p>
-        ${result.statusCode ? `<p><strong>Status Code:</strong> ${result.statusCode}</p>` : ""}
-        ${result.responseTimeMs ? `<p><strong>Response Time:</strong> ${result.responseTimeMs}ms</p>` : ""}
-        ${result.errorMessage ? `<p><strong>Error:</strong> ${result.errorMessage}</p>` : ""}
-        <p><strong>Time:</strong> ${new Date().toISOString()}</p>
-        <p style="color: #6b7280; font-size: 14px;">You will receive another email when the API recovers.</p>
-      </div>
-    </div>
-  `;
-
-  // Send to all recipients — don't let one failure block others
-  await Promise.allSettled(
-    recipients.map((to) => sendEmail(to, subject, html)),
-  );
 }
 
 export async function sendRecoveryAlert(
-  monitorId: string,
-  url: string,
-  result: PingResult,
-): Promise<void> {
-  const recipients = await getAlertRecipients(monitorId);
-  if (recipients.length === 0) return;
+  monitorId: number,
+  monitorName: string,
+  monitorUrl: string,
+  downtimeMinutes: number,
+) {
+  const alertConfigs = await prisma.alertConfig.findMany({
+    where: { monitorId, isActive: true },
+    include: { user: true },
+  });
 
-  const subject = `✅ RECOVERED: ${url}`;
-  const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px;">
-      <div style="background: #22c55e; color: white; padding: 16px 24px; border-radius: 8px 8px 0 0;">
-        <h2 style="margin: 0;">✅ API Recovered</h2>
-      </div>
-      <div style="background: #fff; border: 1px solid #e5e7eb; padding: 24px; border-radius: 0 0 8px 8px;">
-        <p><strong>URL:</strong> ${url}</p>
-        ${result.statusCode ? `<p><strong>Status Code:</strong> ${result.statusCode}</p>` : ""}
-        ${result.responseTimeMs ? `<p><strong>Response Time:</strong> ${result.responseTimeMs}ms</p>` : ""}
-        <p><strong>Recovered at:</strong> ${new Date().toISOString()}</p>
-      </div>
-    </div>
-  `;
+  if (alertConfigs.length === 0) return;
 
-  await Promise.allSettled(
-    recipients.map((to) => sendEmail(to, subject, html)),
-  );
+  for (const config of alertConfigs) {
+    try {
+      await sendMail({
+        from: `"API Monitor" <${process.env.EMAIL_USER}>`,
+        to: config.destination,
+        subject: `🟢 ${monitorName} is back UP`,
+        html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #22c55e;">✅ Monitor Recovered</h2>
+          <p><strong>${monitorName}</strong> is back online.</p>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px; color: #6b7280;">URL</td>
+              <td style="padding: 8px;">${monitorUrl}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; color: #6b7280;">Downtime</td>
+              <td style="padding: 8px;">${downtimeMinutes} minutes</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; color: #6b7280;">Recovered at</td>
+              <td style="padding: 8px;">${new Date().toUTCString()}</td>
+            </tr>
+          </table>
+        </div>
+      `,
+      });
+    } catch {
+      // Error already logged in sendMail — continue to next recipient
+    }
+  }
+}
+
+export async function sendWeeklySummary() {
+  const users = await prisma.user.findMany({
+    include: {
+      monitors: {
+        where: { isActive: true },
+      },
+      alertConfigs: {
+        where: { isActive: true },
+      },
+    },
+  });
+
+  for (const user of users) {
+    if (user.monitors.length === 0) continue;
+    if (user.alertConfigs.length === 0) continue;
+
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+
+    const summaryRows = await Promise.all(
+      user.monitors.map(async (monitor) => {
+        const checks = await prisma.checkHistory.count({
+          where: { monitorId: monitor.id, checkedAt: { gte: weekAgo } },
+        });
+        const upChecks = await prisma.checkHistory.count({
+          where: {
+            monitorId: monitor.id,
+            status: "up",
+            checkedAt: { gte: weekAgo },
+          },
+        });
+        const incidents = await prisma.incident.count({
+          where: {
+            monitorId: monitor.id,
+            startedAt: { gte: weekAgo },
+          },
+        });
+        const uptime =
+          checks > 0 ? ((upChecks / checks) * 100).toFixed(2) : "N/A";
+
+        return `
+          <tr>
+            <td style="padding: 8px;">${monitor.name}</td>
+            <td style="padding: 8px;">${uptime}%</td>
+            <td style="padding: 8px;">${incidents}</td>
+            <td style="padding: 8px;">${checks}</td>
+          </tr>
+        `;
+      }),
+    );
+
+    const destinations = [
+      ...new Set(user.alertConfigs.map((config) => config.destination)),
+    ];
+
+    for (const destination of destinations) {
+      try {
+        await sendMail({
+          from: `"API Monitor" <${process.env.EMAIL_USER}>`,
+          to: destination,
+          subject: `📊 Weekly Monitor Summary`,
+          html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>Weekly Summary</h2>
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb;">
+          <thead>
+            <tr style="background: #f9fafb;">
+              <th style="padding: 8px; text-align: left;">Monitor</th>
+              <th style="padding: 8px; text-align: left;">Uptime</th>
+              <th style="padding: 8px; text-align: left;">Incidents</th>
+              <th style="padding: 8px; text-align: left;">Total Checks</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${summaryRows.join("")}
+          </tbody>
+        </table>
+      </div>
+    `,
+        });
+      } catch {
+        // Error already logged in sendMail — continue to next destination
+      }
+    }
+  }
 }
