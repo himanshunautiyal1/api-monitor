@@ -14,25 +14,32 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
       async authorize(credentials) {
-        const parsed = loginSchema.safeParse(credentials);
-        if (!parsed.success) return null;
+        try {
+          const parsed = loginSchema.safeParse(credentials);
+          if (!parsed.success) return null;
 
-        const { email, password } = parsed.data;
+          const { email, password } = parsed.data;
 
-        const user = await prisma.user.findUnique({
-          where: { email },
-        });
+          const user = await prisma.user.findUnique({
+            where: { email },
+          });
 
-        if (!user) return null;
+          if (!user) return null;
 
-        const passwordMatch = await bcrypt.compare(password, user.passwordHash);
-        if (!passwordMatch) return null;
+          const passwordMatch = await bcrypt.compare(password, user.passwordHash);
+          if (!passwordMatch) return null;
 
-        return {
-          id: String(user.id),
-          email: user.email,
-          name: user.username,
-        };
+          return {
+            id: String(user.id),
+            email: user.email,
+            name: user.username,
+          };
+        } catch (error) {
+          // Log the actual error so DB connection failures are visible
+          // in pm2 logs instead of silently showing "wrong password"
+          console.error("❌ Auth error (likely DB connection issue):", error);
+          return null;
+        }
       },
     }),
   ],

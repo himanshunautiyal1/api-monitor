@@ -9,10 +9,11 @@ export function startChecker() {
   if (isRunning) return;
   isRunning = true;
 
-  console.log("✅ Background checker started");
+  console.log("✅ Background checker started at", new Date().toISOString());
 
   // main checker — runs every minute
   cron.schedule("* * * * *", async () => {
+    console.log("⏰ Cron tick at", new Date().toISOString());
     try {
       await runChecks();
     } catch (error) {
@@ -41,32 +42,67 @@ export function startChecker() {
 
 async function runChecks() {
   const now = new Date();
+  const minutesSinceEpoch = Math.floor(now.getTime() / 60000);
 
-  const monitors = await prisma.monitor.findMany({
-    where: { isActive: true },
-  });
+  console.log(`🔍 runChecks: fetching active monitors...`);
+
+  let monitors;
+  try {
+    monitors = await prisma.monitor.findMany({
+      where: { isActive: true },
+    });
+    console.log(`🔍 runChecks: found ${monitors.length} active monitors`);
+  } catch (error) {
+    console.error("❌ runChecks: FAILED to fetch monitors from DB:", error);
+    return;
+  }
+
+  if (monitors.length === 0) {
+    console.log("🔍 runChecks: no active monitors, skipping");
+    return;
+  }
 
   for (const monitor of monitors) {
-    // check if it's time to ping this monitor
-    const minutesSinceEpoch = Math.floor(now.getTime() / 60000);
-    if (minutesSinceEpoch % monitor.intervalMinutes !== 0) continue;
-
-    // run ping in background — don't await so monitors run in parallel
-    checkMonitor(monitor).catch((err) =>
-      console.error(`Error checking monitor ${monitor.id}:`, err),
+    const shouldRun = minutesSinceEpoch % monitor.intervalMinutes === 0;
+    console.log(
+      `🔍 Monitor "${monitor.name}" (interval=${monitor.intervalMinutes}m): ` +
+        `${minutesSinceEpoch} % ${monitor.intervalMinutes} = ${minutesSinceEpoch % monitor.intervalMinutes} → ${shouldRun ? "WILL CHECK" : "skipping"}`,
     );
+
+    if (!shouldRun) continue;
+
+    // Await each monitor check sequentially to avoid overwhelming the DB
+    // on resource-constrained devices (phone)
+    try {
+      await checkMonitor(monitor);
+    } catch (err) {
+      console.error(`❌ Error checking monitor ${monitor.name}:`, err);
+    }
   }
+
+  console.log("✅ runChecks: complete");
 }
 
 async function checkMonitor(
   monitor: Awaited<ReturnType<typeof prisma.monitor.findFirst>> & object,
 ) {
-  const result = await pingMonitor(monitor as any);
+  console.log(`  📡 Pinging ${monitor.name} (${monitor.url})...`);
 
-  // save to check_history — with explicit error handling
-  let savedCheck;
+  let result;
   try {
-    savedCheck = await prisma.checkHistory.create({
+    result = await pingMonitor(monitor as any);
+    console.log(
+      `  📡 Ping result: ${result.status} | ${result.responseTimeMs}ms | HTTP ${result.statusCode ?? "N/A"} | ${result.errorMessage ?? "OK"}`,
+    );
+  } catch (pingError) {
+    console.error(`  ❌ Ping CRASHED for ${monitor.name}:`, pingError);
+    return;
+  }
+
+  // save to check_history
+  console.log(`  💾 Writing check to DB for ${monitor.name}...`);
+  try {
+    await prisma.checkHistory.create({
       data: {
         monitorId: monitor.id,
         status: result.status,
@@ -75,17 +111,13 @@ async function checkMonitor(
         errorMessage: result.errorMessage,
       },
     });
-    console.log(
-      `📊 Check saved: ${monitor.name} → ${result.status} (${result.responseTimeMs}ms)`,
-    );
+    console.log(`  ✅ DB write SUCCESS for ${monitor.name}`);
   } catch (dbError) {
-    // Log the ACTUAL error instead of swallowing it
     console.error(
-      `❌ DB write failed for monitor ${monitor.name} (${monitor.id}):`,
-      dbError,
+      `  ❌ DB write FAILED for ${monitor.name}:`,
+      dbError instanceof Error ? dbError.message : dbError,
     );
-    // Don't proceed with status change detection if DB write failed
-    // because the comparison data would be inconsistent
+    console.error(`  ❌ Full error:`, dbError);
     return;
   }
 
@@ -99,6 +131,10 @@ async function checkMonitor(
   const statusChanged = previousCheck && previousCheck.status !== result.status;
 
   if (statusChanged) {
+    console.log(
+      `  🔄 Status changed: ${previousCheck.status} → ${result.status} for ${monitor.name}`,
+    );
+
     if (result.status === "down") {
       // create incident
       await prisma.incident.create({
@@ -139,6 +175,10 @@ async function checkMonitor(
         );
       }
     }
+  } else {
+    console.log(
+      `  ℹ️ No status change for ${monitor.name} (was: ${previousCheck?.status ?? "none"}, now: ${result.status})`,
+    );
   }
 }
 

@@ -26,22 +26,30 @@ export async function POST(req: NextRequest) {
 
   const { email, username, password } = parsed.data;
 
-  const existingUser = await prisma.user.findFirst({
-    where: { OR: [{ email }, { username }] },
-  });
+  try {
+    const existingUser = await prisma.user.findFirst({
+      where: { OR: [{ email }, { username }] },
+    });
 
-  if (existingUser) {
+    if (existingUser) {
+      return NextResponse.json(
+        { error: "Email or username already taken" },
+        { status: 400 },
+      );
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    await prisma.user.create({
+      data: { email, username, passwordHash },
+    });
+
+    return NextResponse.json({ success: true }, { status: 201 });
+  } catch (error) {
+    console.error("❌ Register error (likely DB connection issue):", error);
     return NextResponse.json(
-      { error: "Email or username already taken" },
-      { status: 400 },
+      { error: "Server error — check pm2 logs for details" },
+      { status: 500 },
     );
   }
-
-  const passwordHash = await bcrypt.hash(password, 12);
-
-  await prisma.user.create({
-    data: { email, username, passwordHash },
-  });
-
-  return NextResponse.json({ success: true }, { status: 201 });
 }
