@@ -574,7 +574,7 @@ export default function LandingPage() {
             <div className="w-5 h-5 bg-emerald-500/20 border border-emerald-500/30 rounded-md flex items-center justify-center">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
             </div>
-            <span>API Monitor</span>
+            <span>API Monitor — Built on a Samsung Galaxy A12</span>
           </div>
         </div>
       </footer>

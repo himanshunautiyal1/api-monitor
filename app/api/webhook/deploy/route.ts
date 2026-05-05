@@ -14,9 +14,15 @@ export async function POST(req: NextRequest) {
   const deployScript =
     "/data/data/com.termux/files/home/apps/api-monitor/deploy-from-github.sh";
 
-  execAsync(`bash ${deployScript}`).catch((err) => {
-    console.error("Deploy script error:", err);
-  });
+  // fix Windows line endings then run
+  execAsync(`sed -i 's/\\r//' ${deployScript} && bash ${deployScript}`)
+    .then(({ stdout, stderr }) => {
+      console.log("Deploy output:", stdout);
+      if (stderr) console.error("Deploy stderr:", stderr);
+    })
+    .catch((err) => {
+      console.error("Deploy script error:", err);
+    });
 
   return NextResponse.json({ message: "Deployment started" });
 }
