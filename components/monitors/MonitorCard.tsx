@@ -35,7 +35,7 @@ export default function MonitorCard({ monitor }: { monitor: Monitor }) {
     });
     router.refresh();
   }
-  console.log("MonitorCard rendered", monitor.id);
+
   return (
     <div className="bg-white/2 border border-white/6 rounded-xl p-6 hover:border-white/12 transition-colors">
       <div className="flex items-start justify-between">
